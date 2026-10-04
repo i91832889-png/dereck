@@ -218,11 +218,19 @@ function wrap(t,mw,f){
   if(l.length>3){l=l.slice(0,3);l[2]=l[2].slice(0,-1)+'…'}
   return l
 }
+const GRP=[['capitale',/capitale/],['date',/annee|date de/],['symbole',/symbole chimique|formule chimique/],['gaz',/gaz|element chimique/],['astre',/planete|etoile|satellite/],['geo',/fleuve|lac |montagne|ocean|mer |desert|pays |continent|chaine|ville/],['pers',/premier president|premier homme|president|auteur|peintre|inventeur|explorateur|empereur|fondateur|prix nobel|ecrivain|liberateur/],['unite',/unite/],['corps',/organe|os de/],['sang',/groupe sanguin/],['animal',/animal|mammifere/],['plat',/plat |semoule|banane/]];
+function grp(c){const q=nz(c.q);for(const [g,r] of GRP)if(r.test(q))return g;return /^[\d.,\s]+$/.test(c.a)?'nombre':''}
+function dis(c,K){
+  const a=c.a,g=grp(c),dg=s=>/\d/.test(s),art=s=>(nz(s).match(/^(le|la|les|l|un|une)\b/)||[''])[0],cap=s=>s[0]===s[0].toUpperCase();
+  const sc=x=>{const b=x.a;return (g&&grp(x)==g?5:0)+(dg(a)==dg(b)?2:-2)+2*(1-Math.abs(a.length-b.length)/Math.max(a.length,b.length,1))+(art(a)==art(b)?1:0)+(cap(a)&&cap(b)?.5:0)+(packOf(x)==packOf(c)?1:0)+Math.random()*.8};
+  const seen=new Set([a]),out=[];
+  K.filter(x=>x.a!==a).map(x=>[sc(x),x.a]).sort((u,v)=>v[0]-u[0]).forEach(([,b])=>{if(out.length<3&&!seen.has(b)){seen.add(b);out.push(b)}});
+  return out
+}
 function nr(){
   const K=deck();q=pick(K,q);
   ql=wrap(q.q,W-40,'bold 20px system-ui');
-  const w=sf(K.filter(c=>c.a!==q.a)).slice(0,3);
-  const o=sf([{a:q.a,ok:1},...w.map(c=>({a:c.a,ok:0}))]);
+  const o=sf([{a:q.a,ok:1},...dis(q,K).map(a=>({a,ok:0}))]);
   bs=o.map((b,k)=>{const l=wrap(b.a,bw()-16,'15px system-ui');return{...b,l,x:(k%2?.73:.27)*W,y:-40-Math.floor(k/2)*120-(k%2)*50,v:65+lv*10,h:l.length*20+24}})
 }
 function burst(px,py,c){for(let k=0;k<14;k++){const a=Math.random()*6.28,s=60+Math.random()*140;ps.push({x:px,y:py,vx:Math.cos(a)*s,vy:Math.sin(a)*s-80,l:.6,c})}}
@@ -549,8 +557,7 @@ function exStart(n){
   OV=null;const K=deck();
   if(K.length<4){toast('Il faut au moins 4 cartes dans ce paquet 📝');return}
   const qs=sf(K).slice(0,Math.min(n,K.length)).map(c=>{
-    const ws=sf(K.filter(x=>x.a!==c.a)).sort((u,v)=>(packOf(v)===packOf(c))-(packOf(u)===packOf(c))).map(x=>x.a);
-    return{c,o:sf([c.a,...[...new Set(ws)].slice(0,3)])}
+    return{c,o:sf([c.a,...dis(c,K)])}
   });
   EX={qs,i:0,ok:0,wr:[],kind:n==10?'mini':'complet'};exQ()
 }
@@ -602,7 +609,7 @@ function oBuild(){
   const K=deck();if(K.length<8)return null;
   let pool=[];const take=()=>{if(!pool.length)pool=sf(K);return pool.pop()};
   const grab=n=>{const r=[];while(r.length<n){const c=take();if(!r.includes(c))r.push(c)}return r};
-  const ws=c=>[...new Set(sf(K.filter(x=>x.a!==c.a)).sort((u,v)=>(packOf(v)===packOf(c))-(packOf(u)===packOf(c))).map(x=>x.a))].slice(0,3);
+  const ws=c=>dis(c,K);
   const it=[];
   grab(4).forEach(c=>it.push({sec:0,t:'mcq',c,o:sf([c.a,...ws(c)])}));
   grab(4).forEach(c=>{const f=ws(c)[0],v=Math.random()<.5||!f;it.push({sec:1,t:'tf',c,v,s:v?c.a:f})});
